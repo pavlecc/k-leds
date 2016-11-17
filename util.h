@@ -28,6 +28,11 @@ public:
 		return *this;
 	}
 
+	bool operator ==(const Vec3 &src)
+	{
+		return r == src.r && g == src.g && b == src.b;
+	}
+
 	static const Vec3 GetZero()
 	{
 		return cZero;

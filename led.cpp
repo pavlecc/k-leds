@@ -65,6 +65,23 @@ void HueToRGB(float _h, float _s, float _v, float& _r, float& _g, float& _b)
     _r += fM; _g += fM; _b += fM;
 }
 
+void LED::DoPattern(unsigned char _pattern, Vec3 _color, unsigned long _patternCnt)
+{
+    switch (_pattern)
+    {
+    default:
+    case 0:
+        Set(EGpioPins_1R, EGpioPins_1G, EGpioPins_1B, _color);
+        Set(EGpioPins_2R, EGpioPins_2G, EGpioPins_2B, _color);
+        break;
+    case 1:
+        unsigned long temp = _patternCnt % 2;
+        Set(EGpioPins_1R, EGpioPins_1G, EGpioPins_1B, temp == 0 ? _color : Vec3::GetZero());
+        Set(EGpioPins_2R, EGpioPins_2G, EGpioPins_2B, temp == 1 ? _color : Vec3::GetZero());
+        break;
+    }
+}
+
 void* LED::Run(void* _data)
 {
     LED led((char*)_data);
@@ -74,15 +91,20 @@ void* LED::Run(void* _data)
     }
     
     Vec3 rgbColor = Vec3::GetZero();
+    float hue = 0.0f; float sat = 0.0f; float val = 0.0f;
     float dutyRatio = 0.0f;
     bool isTapping = false;
     bool isBlinking = false;
     bool ledsOn = false;
+    bool ledsOn_prev = false;
     unsigned char pattern = 0;
+    unsigned long patternCnt = 0;
     unsigned long timeOutCnt = 0;
 
     while(1)
     {
+        ledsOn_prev = ledsOn;
+
         if (Input::GetInstance().IsJustPressed(EMidiCode_On, K_LedTimeoutMultiplier * K_LedTimeoutMs))
         {
             ledsOn = true;
@@ -98,6 +120,12 @@ void* LED::Run(void* _data)
             if (Input::GetInstance().IsJustPressed(EMidiCode_Pattern1, K_LedTimeoutMultiplier * K_LedTimeoutMs))
             {
                 pattern = 1;
+                patternCnt = 0;
+            }
+            if (Input::GetInstance().IsJustPressed(EMidiCode_Tap, K_LedTimeoutMultiplier * K_LedTimeoutMs) ||
+                Input::GetInstance().IsJustPressed(EMidiCode_Speed, K_LedTimeoutMultiplier * K_LedTimeoutMs))
+            {
+                pattern = 0;
             }
 
             unsigned long long tapStamp = Input::GetInstance().GetTimeStamp(EMidiCode_Tap);
@@ -105,8 +133,8 @@ void* LED::Run(void* _data)
             unsigned long long onStamp = Input::GetInstance().GetTimeStamp(EMidiCode_On);
             unsigned long long offStamp = Input::GetInstance().GetTimeStamp(EMidiCode_Off);
 
-            isTapping =  tapStamp > speedStamp && tapStamp > onStamp && tapStamp > offStamp;
-            isBlinking = speedStamp > tapStamp && speedStamp > onStamp && speedStamp > offStamp;
+            isTapping =  tapStamp > speedStamp && ((tapStamp > onStamp && tapStamp > offStamp) || pattern > 0);
+            isBlinking = speedStamp > tapStamp && ((speedStamp > onStamp && speedStamp > offStamp) || pattern > 0);
 
             if (isTapping)
             {
@@ -119,12 +147,16 @@ void* LED::Run(void* _data)
                 ledsOn = timeOutCnt % (2 * K_LedTimeoutMultiplier + lround((K_LedTimeoutMultiplier * 6) * (1.0f - dutyRatio))) < K_LedTimeoutMultiplier;
             }
         }
-        
+
         if (ledsOn)
         {
-            float hue = Input::GetInstance().GetValue(EMidiCode_Hue);
-            float sat = Input::GetInstance().GetValue(EMidiCode_Sat);
-            float val = Input::GetInstance().GetValue(EMidiCode_Val);
+            if (pattern > 0 && ledsOn && !ledsOn_prev)
+            {
+                patternCnt++;
+            }
+            hue = Input::GetInstance().GetValue(EMidiCode_Hue);
+            sat = Input::GetInstance().GetValue(EMidiCode_Sat);
+            val = Input::GetInstance().GetValue(EMidiCode_Val);
             HueToRGB(hue * 360.0f, sat, val, rgbColor.r, rgbColor.g, rgbColor.b);
         }
         else
@@ -132,7 +164,7 @@ void* LED::Run(void* _data)
             rgbColor = Vec3::GetZero();
         }
         
-        led.Set(EGpioPins_1R, EGpioPins_1G, EGpioPins_1B, rgbColor);
+        led.DoPattern(pattern, rgbColor, patternCnt);
         
         timeOutCnt++;
         usleep(K_LedTimeoutUs);
