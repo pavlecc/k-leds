@@ -1,9 +1,6 @@
 #pragma once
 
-#include "midi_mapping.h"
-
-#define K_MaxTapCount    8
-#define K_MaxTapInterval 2000
+#include "constants.h"
 
 struct MidiCtrl
 {
@@ -20,7 +17,6 @@ class Input
 {
 public:
     static Input& GetInstance();
-    static unsigned long long GetCurrentMilis();
     static void* Run(void* _data);
     MidiCtrl* GetMidiCtrlByCode(EMidiCode _code);
     bool IsJustPressed(EMidiCode _code, unsigned long _time);

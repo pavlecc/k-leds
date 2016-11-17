@@ -6,6 +6,8 @@
 #include <math.h>
 #include "led.h"
 #include "input.h"
+#include "constants.h"
+#include "util.h"
 
 LED::LED(char* _devName)
 {
@@ -20,14 +22,21 @@ LED::LED(char* _devName)
 
 LED::~LED() {}
 
-void LED::Set(int _channel, float _value)
+void LED::Set(int _pinR, int _pinG, int _pinB, Vec3 _color)
 {
     char buffer[16];
-    snprintf(buffer, 16, "%d=%.2f\n", _channel, _value);
-    file = open(devName, O_RDWR);
-    int bufLen = strlen(buffer);
+    int bufLen = 0;
+    file = open(devName, O_RDWR);    
     if (!(file < 0))
     {
+        snprintf(buffer, 16, "%d=%.2f\n", _pinR, _color.r);
+        bufLen = strlen(buffer);
+        write(file, buffer, bufLen);
+        snprintf(buffer, 16, "%d=%.2f\n", _pinG, _color.g);
+        bufLen = strlen(buffer);
+        write(file, buffer, bufLen);
+        snprintf(buffer, 16, "%d=%.2f\n", _pinB, _color.b);
+        bufLen = strlen(buffer);
         write(file, buffer, bufLen);
         close(file);
     }
@@ -56,9 +65,6 @@ void HueToRGB(float _h, float _s, float _v, float& _r, float& _g, float& _b)
     _r += fM; _g += fM; _b += fM;
 }
 
-#define TIMEOUT   33
-#define TIMEOUT_MULTIPLIER 4
-
 void* LED::Run(void* _data)
 {
     LED led((char*)_data);
@@ -66,24 +72,34 @@ void* LED::Run(void* _data)
     {
         return NULL;
     }
-    float red = 0.0f; float green = 0.0f; float blue = 0.0f;
+    
+    Vec3 rgbColor = Vec3::GetZero();
     float dutyRatio = 0.0f;
     bool isTapping = false;
     bool isBlinking = false;
     bool ledsOn = false;
+    unsigned char pattern = 0;
     unsigned long timeOutCnt = 0;
+
     while(1)
     {
-        if (Input::GetInstance().IsJustPressed(EMidiCode_On, TIMEOUT_MULTIPLIER * TIMEOUT))
+        if (Input::GetInstance().IsJustPressed(EMidiCode_On, K_LedTimeoutMultiplier * K_LedTimeoutMs))
         {
             ledsOn = true;
+            pattern = 0;
         }
-        else if (Input::GetInstance().IsJustPressed(EMidiCode_Off, TIMEOUT_MULTIPLIER * TIMEOUT))
+        else if (Input::GetInstance().IsJustPressed(EMidiCode_Off, K_LedTimeoutMultiplier * K_LedTimeoutMs))
         {
             ledsOn = false;
+            pattern = 0;
         }
         else
         {
+            if (Input::GetInstance().IsJustPressed(EMidiCode_Pattern1, K_LedTimeoutMultiplier * K_LedTimeoutMs))
+            {
+                pattern = 1;
+            }
+
             unsigned long long tapStamp = Input::GetInstance().GetTimeStamp(EMidiCode_Tap);
             unsigned long long speedStamp = Input::GetInstance().GetTimeStamp(EMidiCode_Speed);
             unsigned long long onStamp = Input::GetInstance().GetTimeStamp(EMidiCode_On);
@@ -94,13 +110,13 @@ void* LED::Run(void* _data)
 
             if (isTapping)
             {
-                ledsOn = Input::GetInstance().IsJustPressed(EMidiCode_Tap, TIMEOUT_MULTIPLIER * TIMEOUT) ||
-                         Input::GetInstance().IsTapRepeated(EMidiCode_Tap, TIMEOUT_MULTIPLIER * TIMEOUT);
+                ledsOn = Input::GetInstance().IsJustPressed(EMidiCode_Tap, K_LedTimeoutMultiplier * K_LedTimeoutMs) ||
+                         Input::GetInstance().IsTapRepeated(EMidiCode_Tap, K_LedTimeoutMultiplier * K_LedTimeoutMs);
             }
             else if (isBlinking)
             {
                 dutyRatio = Input::GetInstance().GetValue(EMidiCode_Speed);
-                ledsOn = timeOutCnt % (2 * TIMEOUT_MULTIPLIER + lround((TIMEOUT_MULTIPLIER * 6) * (1.0f - dutyRatio))) < TIMEOUT_MULTIPLIER;
+                ledsOn = timeOutCnt % (2 * K_LedTimeoutMultiplier + lround((K_LedTimeoutMultiplier * 6) * (1.0f - dutyRatio))) < K_LedTimeoutMultiplier;
             }
         }
         
@@ -109,19 +125,17 @@ void* LED::Run(void* _data)
             float hue = Input::GetInstance().GetValue(EMidiCode_Hue);
             float sat = Input::GetInstance().GetValue(EMidiCode_Sat);
             float val = Input::GetInstance().GetValue(EMidiCode_Val);
-            HueToRGB(hue * 360.0f, sat, val, red, green, blue);
+            HueToRGB(hue * 360.0f, sat, val, rgbColor.r, rgbColor.g, rgbColor.b);
         }
         else
         {
-            red = 0.0f; green = 0.0f; blue = 0.0f;
+            rgbColor = Vec3::GetZero();
         }
         
-        led.Set(27, red);
-        led.Set(17, green);
-        led.Set(22, blue); 
+        led.Set(EGpioPins_1R, EGpioPins_1G, EGpioPins_1B, rgbColor);
         
         timeOutCnt++;
-        usleep(TIMEOUT * 1000);
+        usleep(K_LedTimeoutUs);
     }
 }
 

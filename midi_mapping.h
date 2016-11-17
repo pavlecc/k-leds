@@ -1,8 +1,5 @@
 #pragma once
 
-#define K_MidiNumControls 16
-#define K_MidiMaxCC       128.0f
-
 enum EMidiCode
 {
 	EMidiCode_None = 0,
@@ -13,5 +10,5 @@ enum EMidiCode
     EMidiCode_On = 45,
     EMidiCode_Off = 46,
     EMidiCode_Tap = 47,
-    EMidiCode_Pattern
+    EMidiCode_Pattern1 = 44
 };

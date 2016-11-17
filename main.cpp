@@ -5,6 +5,7 @@
 #include <alsa/asoundlib.h>
 #include "led.h"
 #include "input.h"
+#include "constants.h"
 
 int main(int argc, char* argv[])
 {
@@ -12,8 +13,8 @@ int main(int argc, char* argv[])
     pthread_t t2;
 
     // Parse input
-    const char* fileName = "/dev/pi-blaster";
-    const char* portName = "hw:1,0,0";
+    const char* fileName = K_PiBlasterDev;
+    const char* portName = K_MidiDev;
     for (int i = 1; i < argc; i++)
     {
         if (strncmp("/dev/", argv[i], 4) == 0)

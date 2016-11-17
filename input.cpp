@@ -1,8 +1,8 @@
 #include <unistd.h>
-#include <time.h>
 #include <math.h>
 #include <alsa/asoundlib.h>
 #include "input.h"
+#include "util.h"
 
 Input::Input()
 {
@@ -18,7 +18,7 @@ Input::Input()
     m_Controls[2].code = EMidiCode_Val;
     m_Controls[3].code = EMidiCode_Speed;
     m_Controls[4].code = EMidiCode_Tap;
-    m_Controls[5].code = EMidiCode_Pattern;
+    m_Controls[5].code = EMidiCode_Pattern1;
     m_Controls[6].code = EMidiCode_On;
     m_Controls[7].code = EMidiCode_Off;
     m_Controls[8].code = EMidiCode_None;
@@ -30,19 +30,12 @@ Input& Input::GetInstance()
     return instance;
 }
 
-unsigned long long Input::GetCurrentMilis()
-{
-    struct timespec spec;
-    clock_gettime(CLOCK_MONOTONIC, &spec);
-    return (unsigned long long)llround(spec.tv_sec * 1000 + spec.tv_nsec / 1.0e6);
-}
-
 bool Input::IsJustPressed(EMidiCode _code, unsigned long _milis)
 {
     MidiCtrl* ctrl = GetMidiCtrlByCode(_code);
     if (ctrl)
     {
-        long interval = (GetCurrentMilis() - ctrl->timeStamp);
+        long interval = (Util::GetCurrentMilis() - ctrl->timeStamp);
         return  interval < _milis;
     }
     return false;
@@ -53,7 +46,7 @@ bool Input::IsTapRepeated(EMidiCode _code, unsigned long _milis)
     MidiCtrl* ctrl = GetMidiCtrlByCode(_code);
     if (ctrl && ctrl->tapInterval > 0)
     {
-        long interval = (GetCurrentMilis() - ctrl->timeStamp);
+        long interval = (Util::GetCurrentMilis() - ctrl->timeStamp);
         if (interval < ctrl->tapInterval)
         {
             return false;
@@ -114,7 +107,7 @@ void* Input::Run(void* _data)
         }
 
         ctrl = NULL;
-        currentMilis = GetCurrentMilis();
+        currentMilis = Util::GetCurrentMilis();
 
         switch (buffer[0])
         {
@@ -176,7 +169,7 @@ void* Input::Run(void* _data)
             break;
         }
         fflush(stdout);
-        usleep(10000);
+        usleep(K_InputTimeoutUs);
     }
 
     return NULL;
