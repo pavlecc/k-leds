@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <math.h>
+#include <string.h>
 #include <alsa/asoundlib.h>
 #include "input.h"
 #include "util.h"
@@ -18,10 +19,13 @@ Input::Input()
     m_Controls[2].code = EMidiCode_Val;
     m_Controls[3].code = EMidiCode_Speed;
     m_Controls[4].code = EMidiCode_Tap;
-    m_Controls[5].code = EMidiCode_Pattern1;
-    m_Controls[6].code = EMidiCode_On;
-    m_Controls[7].code = EMidiCode_Off;
-    m_Controls[8].code = EMidiCode_None;
+    m_Controls[5].code = EMidiCode_On;
+    m_Controls[6].code = EMidiCode_Off;
+    m_Controls[7].code = EMidiCode_Pattern1;
+    m_Controls[8].code = EMidiCode_Pattern2;
+    m_Controls[9].code = EMidiCode_Pattern3;
+    m_Controls[10].code = EMidiCode_Pattern4;
+    m_Controls[11].code = EMidiCode_Pattern5;
 }
 
 Input& Input::GetInstance()
@@ -93,15 +97,16 @@ MidiCtrl* Input::GetMidiCtrlByCode(EMidiCode _code)
 void* Input::Run(void* _data)
 {
     snd_rawmidi_t* midiIn = (snd_rawmidi_t*)_data;
-    char buffer[3];
+    char buffer[K_MidiBufferSize];
     MidiCtrl* ctrl;
     unsigned long long currentMilis;
+    int messageIdx = 0;
 
     while (1) {
         if (midiIn == NULL) {
             break;
         }
-        if (snd_rawmidi_read(midiIn, buffer, 3) < 0) {
+        if (snd_rawmidi_read(midiIn, buffer, K_MidiBufferSize) < 0) {
             printf("\n**ERROR** Problem reading MIDI input\n\n");
             break;
         }
@@ -109,11 +114,20 @@ void* Input::Run(void* _data)
         ctrl = NULL;
         currentMilis = Util::GetCurrentMilis();
 
-        switch (buffer[0])
+        for (messageIdx = 3; messageIdx < K_MidiBufferSize; messageIdx += 3)
+        {
+            if (buffer[messageIdx] == 0)
+            {
+                break;
+            }
+        }
+        messageIdx -= 3;
+
+        switch (buffer[messageIdx])
         {
         case 0x90:    
             {
-                ctrl = GetInstance().GetMidiCtrlByCode((EMidiCode)buffer[1]);
+                ctrl = GetInstance().GetMidiCtrlByCode((EMidiCode)buffer[messageIdx + 1]);
                 if (ctrl)
                 {
                     if (currentMilis > (ctrl->timeStamp + K_MaxTapInterval))
@@ -137,18 +151,20 @@ void* Input::Run(void* _data)
                         {
                             ctrl->tapInterval += (ctrl->tapStamps[ti] - ctrl->tapStamps[ti + 1]);
                         }
-                        ctrl->tapInterval = lround(ctrl->tapInterval / (float)(ctrl->tapCount - 1));
+                        float fTapCount = (float)(ctrl->tapCount - 1);
+                        if (fTapCount < 0.5) fTapCount = 1.0f;
+                        ctrl->tapInterval = lround(ctrl->tapInterval / fTapCount);
                     }
 
                     ctrl->timeStamp = currentMilis;
-                    ctrl->value = buffer[2];
+                    ctrl->value = buffer[messageIdx + 2];
                     ctrl->pressed = true;
                 }
             }
             break;
         case 0x80:
             {
-                ctrl = GetInstance().GetMidiCtrlByCode((EMidiCode)buffer[1]);
+                ctrl = GetInstance().GetMidiCtrlByCode((EMidiCode)buffer[messageIdx + 1]);
                 if (ctrl)
                 {
                     ctrl->pressed = false;
@@ -157,18 +173,19 @@ void* Input::Run(void* _data)
             break;
         case 0xB0:
             {
-                ctrl = GetInstance().GetMidiCtrlByCode((EMidiCode)buffer[1]);
+                ctrl = GetInstance().GetMidiCtrlByCode((EMidiCode)buffer[messageIdx + 1]);
                 if (ctrl)
                 {
                     ctrl->timeStamp = currentMilis;
-                    ctrl->value = buffer[2];
-                }
+                    ctrl->value = buffer[messageIdx + 2];
+	        }
             }
             break;
         default:
             break;
         }
         fflush(stdout);
+        memset(buffer, 0, K_MidiBufferSize);
         usleep(K_InputTimeoutUs);
     }
 

@@ -18,27 +18,26 @@ LED::LED(char* _devName)
         printf("\n\n**ERROR** LED::Could not open the file \"%s\"\n\n", devName);
     }
     close(file);
+    for (int i = 0; i < 6; i++)
+    {
+        colors[i] = Vec3::GetZero();
+    }
 }
 
 LED::~LED() {}
 
-void LED::Set(int _pinR, int _pinG, int _pinB, Vec3 _color)
+void LED::Set(int _stripe, int _pinR, int _pinG, int _pinB, Vec3 _color)
 {
-    char buffer[16];
+    char buffer[40];
     int bufLen = 0;
-    file = open(devName, O_RDWR);    
+    if (colors[_stripe] == _color) return;
+    colors[_stripe] = _color;
     if (!(file < 0))
     {
-        snprintf(buffer, 16, "%d=%.2f\n", _pinR, _color.r);
+        snprintf(buffer, 40, "%d=%.2f %d=%.2f %d=%.2f\n",
+                 _pinR, _color.r, _pinG, _color.g, _pinB, _color.b);
         bufLen = strlen(buffer);
         write(file, buffer, bufLen);
-        snprintf(buffer, 16, "%d=%.2f\n", _pinG, _color.g);
-        bufLen = strlen(buffer);
-        write(file, buffer, bufLen);
-        snprintf(buffer, 16, "%d=%.2f\n", _pinB, _color.b);
-        bufLen = strlen(buffer);
-        write(file, buffer, bufLen);
-        close(file);
     }
 }
 
@@ -67,18 +66,71 @@ void HueToRGB(float _h, float _s, float _v, float& _r, float& _g, float& _b)
 
 void LED::DoPattern(unsigned char _pattern, Vec3 _color, unsigned long _patternCnt)
 {
+    unsigned long temp;
+
+    file = open(devName, O_RDWR);
+
     switch (_pattern)
     {
     default:
     case 0:
-        Set(EGpioPins_1R, EGpioPins_1G, EGpioPins_1B, _color);
-        Set(EGpioPins_2R, EGpioPins_2G, EGpioPins_2B, _color);
+        Set(1, EGpioPins_1R, EGpioPins_1G, EGpioPins_1B, _color);
+        Set(2, EGpioPins_2R, EGpioPins_2G, EGpioPins_2B, _color);
+        Set(3, EGpioPins_3R, EGpioPins_3G, EGpioPins_3B, _color);
+        Set(4, EGpioPins_4R, EGpioPins_4G, EGpioPins_4B, _color);
+        Set(5, EGpioPins_5R, EGpioPins_5G, EGpioPins_5B, _color);
+        Set(6, EGpioPins_6R, EGpioPins_6G, EGpioPins_6B, _color);
         break;
     case 1:
-        unsigned long temp = _patternCnt % 2;
-        Set(EGpioPins_1R, EGpioPins_1G, EGpioPins_1B, temp == 0 ? _color : Vec3::GetZero());
-        Set(EGpioPins_2R, EGpioPins_2G, EGpioPins_2B, temp == 1 ? _color : Vec3::GetZero());
+        temp = _patternCnt % 3;
+        Set(1, EGpioPins_1R, EGpioPins_1G, EGpioPins_1B, temp == 0 ? _color : Vec3::GetZero());
+        Set(6, EGpioPins_6R, EGpioPins_6G, EGpioPins_6B, temp == 0 ? _color : Vec3::GetZero());
+        Set(2, EGpioPins_2R, EGpioPins_2G, EGpioPins_2B, temp == 1 ? _color : Vec3::GetZero());
+        Set(5, EGpioPins_5R, EGpioPins_5G, EGpioPins_5B, temp == 1 ? _color : Vec3::GetZero());
+        Set(3, EGpioPins_3R, EGpioPins_3G, EGpioPins_3B, temp == 2 ? _color : Vec3::GetZero());
+        Set(4, EGpioPins_4R, EGpioPins_4G, EGpioPins_4B, temp == 2 ? _color : Vec3::GetZero());
         break;
+    case 2:
+        temp = _patternCnt % 3;
+        Set(1, EGpioPins_1R, EGpioPins_1G, EGpioPins_1B, temp == 2 ? _color : Vec3::GetZero());
+        Set(6, EGpioPins_6R, EGpioPins_6G, EGpioPins_6B, temp == 2 ? _color : Vec3::GetZero());
+        Set(2, EGpioPins_2R, EGpioPins_2G, EGpioPins_2B, temp == 1 ? _color : Vec3::GetZero());
+        Set(5, EGpioPins_5R, EGpioPins_5G, EGpioPins_5B, temp == 1 ? _color : Vec3::GetZero());
+        Set(3, EGpioPins_3R, EGpioPins_3G, EGpioPins_3B, temp == 0 ? _color : Vec3::GetZero());
+        Set(4, EGpioPins_4R, EGpioPins_4G, EGpioPins_4B, temp == 0 ? _color : Vec3::GetZero());
+        break;
+    case 3:
+        temp = _patternCnt % 10;
+        Set(1, EGpioPins_1R, EGpioPins_1G, EGpioPins_1B, (temp == 2 || temp == 8) ? _color : Vec3::GetZero());
+        Set(2, EGpioPins_2R, EGpioPins_2G, EGpioPins_2B, (temp == 1 || temp == 9) ? _color : Vec3::GetZero());
+        Set(3, EGpioPins_3R, EGpioPins_3G, EGpioPins_3B, temp == 0 ? _color : Vec3::GetZero());
+        Set(4, EGpioPins_4R, EGpioPins_4G, EGpioPins_4B, temp == 5 ? _color : Vec3::GetZero());
+        Set(5, EGpioPins_5R, EGpioPins_5G, EGpioPins_5B, (temp == 4 || temp == 6) ? _color : Vec3::GetZero());
+        Set(6, EGpioPins_6R, EGpioPins_6G, EGpioPins_6B, (temp == 3 || temp == 7) ? _color : Vec3::GetZero());
+        break;
+    case 4:
+        temp = _patternCnt % 6;
+        Set(1, EGpioPins_1R, EGpioPins_1G, EGpioPins_1B, (temp > 4) ? _color : Vec3::GetZero());
+        Set(2, EGpioPins_2R, EGpioPins_2G, EGpioPins_2B, (temp < 3) ? _color : Vec3::GetZero());
+        Set(3, EGpioPins_3R, EGpioPins_3G, EGpioPins_3B, (temp > 2) ? _color : Vec3::GetZero());
+        Set(4, EGpioPins_4R, EGpioPins_4G, EGpioPins_4B, (temp < 5) ? _color : Vec3::GetZero());
+        Set(5, EGpioPins_5R, EGpioPins_5G, EGpioPins_5B, (temp < 2) ? _color : Vec3::GetZero());
+        Set(6, EGpioPins_6R, EGpioPins_6G, EGpioPins_6B, (temp > 3) ? _color : Vec3::GetZero());
+        break;
+    case 5:
+        temp = _patternCnt % 6;
+        Set(1, EGpioPins_1R, EGpioPins_1G, EGpioPins_1B, (temp == 0) ? _color : Vec3::GetZero());
+        Set(2, EGpioPins_2R, EGpioPins_2G, EGpioPins_2B, (temp == 1) ? _color : Vec3::GetZero());
+        Set(3, EGpioPins_3R, EGpioPins_3G, EGpioPins_3B, (temp == 2) ? _color : Vec3::GetZero());
+        Set(4, EGpioPins_4R, EGpioPins_4G, EGpioPins_4B, (temp == 3) ? _color : Vec3::GetZero());
+        Set(5, EGpioPins_5R, EGpioPins_5G, EGpioPins_5B, (temp == 4) ? _color : Vec3::GetZero());
+        Set(6, EGpioPins_6R, EGpioPins_6G, EGpioPins_6B, (temp == 5) ? _color : Vec3::GetZero());
+        break;
+    }
+
+    if (!(file < 0))
+    {
+        close(file);
     }
 }
 
@@ -101,6 +153,22 @@ void* LED::Run(void* _data)
     unsigned long patternCnt = 0;
     unsigned long timeOutCnt = 0;
 
+    led.DoPattern(0, Vec3(1.0f, 0.0f, 0.0f), 0);
+    usleep(250000);
+    led.DoPattern(0, Vec3::GetZero(), 0);
+    usleep(250000);
+    led.DoPattern(0, Vec3(0.0f, 1.0f, 0.0f), 0);
+    usleep(250000);
+    led.DoPattern(0, Vec3::GetZero(), 0);
+    usleep(250000);
+    led.DoPattern(0, Vec3(0.0f, 0.0f, 1.0f), 0);
+    usleep(250000);
+    led.DoPattern(0, Vec3::GetZero(), 0);
+    usleep(250000);
+    led.DoPattern(0, Vec3(1.0f, 1.0f, 1.0f), 0);
+    usleep(500000);
+    led.DoPattern(0, Vec3::GetZero(), 0);
+
     while(1)
     {
         ledsOn_prev = ledsOn;
@@ -120,6 +188,26 @@ void* LED::Run(void* _data)
             if (Input::GetInstance().IsJustPressed(EMidiCode_Pattern1, K_LedTimeoutMultiplier * K_LedTimeoutMs))
             {
                 pattern = 1;
+                patternCnt = 0;
+            }
+            if (Input::GetInstance().IsJustPressed(EMidiCode_Pattern2, K_LedTimeoutMultiplier * K_LedTimeoutMs))
+            {
+                pattern = 2;
+                patternCnt = 0;
+            }
+            if (Input::GetInstance().IsJustPressed(EMidiCode_Pattern3, K_LedTimeoutMultiplier * K_LedTimeoutMs))
+            {
+                pattern = 3;
+                patternCnt = 0;
+            }
+            if (Input::GetInstance().IsJustPressed(EMidiCode_Pattern4, K_LedTimeoutMultiplier * K_LedTimeoutMs))
+            {
+                pattern = 4;
+                patternCnt = 0;
+            }
+            if (Input::GetInstance().IsJustPressed(EMidiCode_Pattern5, K_LedTimeoutMultiplier * K_LedTimeoutMs))
+            {
+                pattern = 5;
                 patternCnt = 0;
             }
             if (Input::GetInstance().IsJustPressed(EMidiCode_Tap, K_LedTimeoutMultiplier * K_LedTimeoutMs) ||
@@ -144,7 +232,11 @@ void* LED::Run(void* _data)
             else if (isBlinking)
             {
                 dutyRatio = Input::GetInstance().GetValue(EMidiCode_Speed);
-                ledsOn = timeOutCnt % (2 * K_LedTimeoutMultiplier + lround((K_LedTimeoutMultiplier * 6) * (1.0f - dutyRatio))) < K_LedTimeoutMultiplier;
+                unsigned long moduo = (2 * K_LedTimeoutMultiplier + lround((K_LedTimeoutMultiplier * 6) * (1.0f - dutyRatio)));
+                if (moduo > 0)
+                {
+                    ledsOn = timeOutCnt % moduo < K_LedTimeoutMultiplier;
+                }
             }
         }
 

@@ -15,6 +15,12 @@ public:
 	, b(_b)
 	{}
 
+	Vec3()
+	: r(0.0f)
+	, g(0.0f)
+	, b(0.0f)
+	{}
+
 	Vec3(const Vec3 &src)
 	{
 		*this = src;
