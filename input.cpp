@@ -5,6 +5,8 @@
 #include "input.h"
 #include "util.h"
 
+bool Input::s_InputActive = false;
+
 Input::Input()
 {
     // Initialize all to 0
@@ -96,19 +98,33 @@ MidiCtrl* Input::GetMidiCtrlByCode(EMidiCode _code)
 
 void* Input::Run(void* _data)
 {
-    snd_rawmidi_t* midiIn = (snd_rawmidi_t*)_data;
+    snd_rawmidi_t* midiIn = NULL;
+    char* portName = (char*)_data;
     char buffer[K_MidiBufferSize];
     MidiCtrl* ctrl;
     unsigned long long currentMilis;
     int messageIdx = 0;
 
     while (1) {
-        if (midiIn == NULL) {
-            break;
+
+        if (midiIn == NULL)
+        {
+            if (snd_rawmidi_open(&midiIn, NULL, portName, 0) < 0)
+            {
+                s_InputActive = false;
+                usleep(K_InputTimeoutUs);
+                continue;
+            }
+            s_InputActive = true;
+            log_info("Midi device connected\n");
         }
+
         if (snd_rawmidi_read(midiIn, buffer, K_MidiBufferSize) < 0) {
-            printf("\n**ERROR** Problem reading MIDI input\n\n");
-            break;
+            log_error("\n**ERROR** Problem reading MIDI input\n\n");
+            midiIn = NULL;
+            s_InputActive = false;
+            usleep(K_InputTimeoutUs);
+            continue;
         }
 
         ctrl = NULL;
@@ -122,6 +138,8 @@ void* Input::Run(void* _data)
             }
         }
         messageIdx -= 3;
+
+        log_info("Midi message: %x %x %x\n", buffer[messageIdx], buffer[messageIdx + 1], buffer[messageIdx + 2]);
 
         switch (buffer[messageIdx])
         {

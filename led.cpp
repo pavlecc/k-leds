@@ -15,7 +15,7 @@ LED::LED(char* _devName)
     file = open(devName, O_RDWR);
     if (file < 0)
     {
-        printf("\n\n**ERROR** LED::Could not open the file \"%s\"\n\n", devName);
+        log_error("\n\n**ERROR** LED::Could not open the file \"%s\"\n\n", devName);
     }
     close(file);
     for (int i = 0; i < 6; i++)
@@ -240,7 +240,7 @@ void* LED::Run(void* _data)
             }
         }
 
-        if (ledsOn)
+        if (ledsOn && Input::s_InputActive)
         {
             if (pattern > 0 && ledsOn && !ledsOn_prev)
             {

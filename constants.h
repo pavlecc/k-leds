@@ -20,3 +20,13 @@
 
 #define K_PiBlasterDev          "/dev/pi-blaster"
 #define K_MidiDev               "hw:1,0,0"
+#define K_PiBlasterInit         "/home/pi/pi-blaster/pi-blaster --gpio \
+								 2,3,4,5,7,8,9,10,11,13,16,17,19,20,21,22,25,27"
+
+#ifdef DEBUG
+#define log_error(...) fprintf(stderr, __VA_ARGS__)
+#define log_info(...) fprintf(stdout, __VA_ARGS__)
+#else
+#define log_error(...) do {} while (false)
+#define log_info(...) do {} while (false)
+#endif

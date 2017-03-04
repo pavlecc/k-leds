@@ -18,6 +18,8 @@ class Input
 public:
     static Input& GetInstance();
     static void* Run(void* _data);
+    static bool s_InputActive;
+
     MidiCtrl* GetMidiCtrlByCode(EMidiCode _code);
     bool IsJustPressed(EMidiCode _code, unsigned long _time);
     bool IsTapRepeated(EMidiCode _code, unsigned long _time);
