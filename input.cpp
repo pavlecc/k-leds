@@ -155,7 +155,8 @@ void* Input::Run(void* _data)
                     }
                     else
                     {
-                        ctrl->tapCount = ctrl->tapCount + 1 < K_MaxTapCount ? ctrl->tapCount + 1 : K_MaxTapCount;
+                        ctrl->tapCount++;
+                        ctrl->tapCount = ctrl->tapCount < K_MaxTapCount ? ctrl->tapCount : K_MaxTapCount;
                     }
                     for (int ri = ctrl->tapCount - 1; ri > 0; ri--)
                     {
@@ -172,6 +173,7 @@ void* Input::Run(void* _data)
                         float fTapCount = (float)(ctrl->tapCount - 1);
                         if (fTapCount < 0.5) fTapCount = 1.0f;
                         ctrl->tapInterval = lround(ctrl->tapInterval / fTapCount);
+                        log_info("Tap interval: %lu\n", ctrl->tapInterval);
                     }
 
                     ctrl->timeStamp = currentMilis;

@@ -11,6 +11,7 @@
 
 LED::LED(char* _devName)
 {
+    initialized = false;
     devName = _devName;
     file = open(devName, O_RDWR);
     if (file < 0)
@@ -18,13 +19,24 @@ LED::LED(char* _devName)
         log_error("\n\n**ERROR** LED::Could not open the file \"%s\"\n\n", devName);
     }
     close(file);
+    file = -1;
     for (int i = 0; i < 6; i++)
     {
         colors[i] = Vec3::GetZero();
     }
+    initialized = true;
 }
 
-LED::~LED() {}
+LED::~LED()
+{
+    initialized = false;
+
+    if (!(file < 0))
+    {
+        close(file);
+        file = -1;
+    }
+}
 
 void LED::Set(int _stripe, int _pinR, int _pinG, int _pinB, Vec3 _color)
 {
@@ -68,7 +80,7 @@ void LED::DoPattern(unsigned char _pattern, Vec3 _color, unsigned long _patternC
 {
     unsigned long temp;
 
-    file = open(devName, O_RDWR);
+    file = open(devName, O_WRONLY);
 
     switch (_pattern)
     {
@@ -131,13 +143,14 @@ void LED::DoPattern(unsigned char _pattern, Vec3 _color, unsigned long _patternC
     if (!(file < 0))
     {
         close(file);
+        file = -1;
     }
 }
 
 void* LED::Run(void* _data)
 {
     LED led((char*)_data);
-    if (led.file < 0)
+    if (!led.initialized)
     {
         return NULL;
     }

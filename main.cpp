@@ -1,21 +1,37 @@
 #include <pthread.h>
+#include <sys/wait.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <string.h>
 #include <alsa/asoundlib.h>
 #include "led.h"
 #include "input.h"
 #include "constants.h"
 
+void intHandler(int dummy)
+{
+    system(K_PiBlasterKill);
+    exit(0);
+}
+
 int main(int argc, char* argv[])
 {
+    // Register interrupt handler
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = intHandler;
+    sigaction(SIGINT, &sa, NULL);
+
     // Start Pi-Blaster
-    int piBlasterStatus = system(K_PiBlasterInit);
+    int piBlasterStatus = system(K_PiBlasterExec);
     if (piBlasterStatus != 0)
     {
-        log_error("\n**ERROR** Problem starting Pi-Blaster");
+        log_error("\n\n**ERROR** Problem starting Pi-Blaster\n\n");
         exit(1);
     }
+    log_info("Starting pi-blaster..\n");
+
     // Wait a bit for Pi-Blaster to activate
     usleep(K_InputTimeoutUs);
 
@@ -33,7 +49,7 @@ int main(int argc, char* argv[])
             portName = argv[i];
         }
     }
-    
+
     // Initiate input
     Input::GetInstance();
 
@@ -44,6 +60,8 @@ int main(int argc, char* argv[])
     pthread_create(&t1, NULL, LED::Run, (char*)fileName);
     pthread_create(&t2, NULL, Input::Run, (char*)portName);
     pthread_join(t2, NULL);
+
+    intHandler(0);
  
     return 0;
 }

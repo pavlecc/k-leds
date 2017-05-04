@@ -9,6 +9,7 @@ private:
     char* devName;
     static char devNameDefault[20];
     int file;
+    bool initialized;
     Vec3 colors[K_StripeCount];
 
 public:
